@@ -50,144 +50,133 @@ class VideoPlayer extends Component {
   }
 
   getCurrentTimePercentage() {
-    if (this.state.currentTime > 0) {
-      return parseFloat(this.state.currentTime) / parseFloat(this.state.duration);
-    } else {
-      return 0;
-    }
+    return this.state.currentTime <= 0 ? 0 :
+      parseFloat(this.state.currentTime) / parseFloat(this.state.duration)
   }
 
-  renderSkinControl(skin) {
-    const isSelected = this.state.skin == skin;
-    const selectControls = skin == 'native' || skin == 'embed';
-    return (
-      <TouchableOpacity onPress={() => { this.setState({
-          controls: selectControls,
-          skin: skin
-        }) }}>
-        <Text style={[styles.controlOption, {fontWeight: isSelected ? "bold" : "normal"}]}>
-          {skin}
-        </Text>
-      </TouchableOpacity>
-    );
+  renderSkinControl (skin) {
+    return <Toggle
+      title={skin}
+      isSelected={this.state.skin == skin}
+      onPress={()=> this.setState({
+        controls: skin == 'native' || skin == 'embed',
+        skin,
+      })}
+    />
   }
 
-  renderRateControl(rate) {
-    const isSelected = (this.state.rate == rate);
-
-    return (
-      <TouchableOpacity onPress={() => { this.setState({rate: rate}) }}>
-        <Text style={[styles.controlOption, {fontWeight: isSelected ? "bold" : "normal"}]}>
-          {rate}x
-        </Text>
-      </TouchableOpacity>
-    )
+  get renderRateControl () {
+    return getToggle({self: this, field: 'rate', stringifyTitle: t=> t+'x'})
   }
 
-  renderResizeModeControl(resizeMode) {
-    const isSelected = (this.state.resizeMode == resizeMode);
-
-    return (
-      <TouchableOpacity onPress={() => { this.setState({resizeMode: resizeMode}) }}>
-        <Text style={[styles.controlOption, {fontWeight: isSelected ? "bold" : "normal"}]}>
-          {resizeMode}
-        </Text>
-      </TouchableOpacity>
-    )
+  get renderResizeModeControl () {
+    return getToggle({self: this, field: 'resizeMode'})
   }
 
-  renderVolumeControl(volume) {
-    const isSelected = (this.state.volume == volume);
-
-    return (
-      <TouchableOpacity onPress={() => { this.setState({volume: volume}) }}>
-        <Text style={[styles.controlOption, {fontWeight: isSelected ? "bold" : "normal"}]}>
-          {volume * 100}%
-        </Text>
-      </TouchableOpacity>
-    )
+  get renderVolumeControl () {
+    return getToggle({self: this, field: 'volume', stringifyTitle: t=> t*100+'%'})
   }
 
-  renderIgnoreSilentSwitchControl(ignoreSilentSwitch) {
-    const isSelected = (this.state.ignoreSilentSwitch == ignoreSilentSwitch);
+  get renderIgnoreSilentSwitchControl () {
+    return getToggle({self: this, field: 'ignoreSilentSwitch'})
+  }
 
-    return (
-      <TouchableOpacity onPress={() => { this.setState({ignoreSilentSwitch: ignoreSilentSwitch}) }}>
-        <Text style={[styles.controlOption, {fontWeight: isSelected ? "bold" : "normal"}]}>
-          {ignoreSilentSwitch}
-        </Text>
-      </TouchableOpacity>
-    )
+  get Controls () {
+    return ({children})=> <View style={styles.controls}>
+      <View style={styles.generalControls}>
+        <View style={styles.skinControl}>
+          {this.renderSkinControl('custom')}
+          {this.renderSkinControl('native')}
+          {this.renderSkinControl('embed')}
+        </View>
+      </View>
+      <View style={styles.generalControls}>
+        <View style={styles.rateControl}>
+          {this.renderRateControl(0.5)}
+          {this.renderRateControl(1.0)}
+          {this.renderRateControl(2.0)}
+        </View>
+
+        <View style={styles.volumeControl}>
+          {this.renderVolumeControl(0.5)}
+          {this.renderVolumeControl(1)}
+          {this.renderVolumeControl(1.5)}
+        </View>
+
+        <View style={styles.resizeModeControl}>
+          {this.renderResizeModeControl('cover')}
+          {this.renderResizeModeControl('contain')}
+          {this.renderResizeModeControl('stretch')}
+        </View>
+      </View>
+      <View style={styles.generalControls}>
+        {
+          Platform.OS !== 'ios' ? null:
+            <View style={styles.ignoreSilentSwitchControl}>
+              {this.renderIgnoreSilentSwitchControl('ignore')}
+              {this.renderIgnoreSilentSwitchControl('obey')}
+            </View>
+        }
+        <View style={styles.ignoreSilentSwitchControl}>
+          <Toggle
+            title={'goFullscreen'}
+            isSelected={false}
+            onPress={()=> this.video.presentFullscreenPlayer()}
+          />
+          <Toggle
+            title={'seek 10'}
+            isSelected={false}
+            onPress={()=> this.video.seek(10)}
+          />
+        </View>
+      </View>
+      {children}
+    </View>
+  }
+
+  renderVideo (props) {
+    return <Video
+      ref={ref=> this.video = ref}
+      source={require('./broadchurch.mp4')}
+      rate={this.state.rate}
+      paused={this.state.paused}
+      volume={this.state.volume}
+      muted={this.state.muted}
+      ignoreSilentSwitch={this.state.ignoreSilentSwitch}
+      resizeMode={this.state.resizeMode}
+      onLoad={this.onLoad}
+      onBuffer={this.onBuffer}
+      onProgress={this.onProgress}
+      onEnd={() => { AlertIOS.alert('Done!') }}
+      repeat={true}
+      {...props}
+    />
+  }
+
+  componentDidMount() {
+    // setTimeout(()=> this.video.presentFullscreenPlayer(), 4000)
   }
 
   renderCustomSkin() {
+    const {Controls} = this
     const flexCompleted = this.getCurrentTimePercentage() * 100;
     const flexRemaining = (1 - this.getCurrentTimePercentage()) * 100;
 
     return (
       <View style={styles.container}>
         <TouchableOpacity style={styles.fullScreen} onPress={() => {this.setState({paused: !this.state.paused})}}>
-          <Video
-            source={require('./broadchurch.mp4')}
-            style={styles.fullScreen}
-            rate={this.state.rate}
-            paused={this.state.paused}
-            volume={this.state.volume}
-            muted={this.state.muted}
-            ignoreSilentSwitch={this.state.ignoreSilentSwitch}
-            resizeMode={this.state.resizeMode}
-            onLoad={this.onLoad}
-            onBuffer={this.onBuffer}
-            onProgress={this.onProgress}
-            onEnd={() => { AlertIOS.alert('Done!') }}
-            repeat={true}
-          />
+          {this.renderVideo({
+            style: styles.fullScreen,
+          })}
         </TouchableOpacity>
-
-        <View style={styles.controls}>
-          <View style={styles.generalControls}>
-            <View style={styles.skinControl}>
-              {this.renderSkinControl('custom')}
-              {this.renderSkinControl('native')}
-              {this.renderSkinControl('embed')}
-            </View>
-          </View>
-          <View style={styles.generalControls}>
-            <View style={styles.rateControl}>
-              {this.renderRateControl(0.5)}
-              {this.renderRateControl(1.0)}
-              {this.renderRateControl(2.0)}
-            </View>
-
-            <View style={styles.volumeControl}>
-              {this.renderVolumeControl(0.5)}
-              {this.renderVolumeControl(1)}
-              {this.renderVolumeControl(1.5)}
-            </View>
-
-            <View style={styles.resizeModeControl}>
-              {this.renderResizeModeControl('cover')}
-              {this.renderResizeModeControl('contain')}
-              {this.renderResizeModeControl('stretch')}
-            </View>
-          </View>
-          <View style={styles.generalControls}>
-            {
-              (Platform.OS === 'ios') ?
-                <View style={styles.ignoreSilentSwitchControl}>
-                  {this.renderIgnoreSilentSwitchControl('ignore')}
-                  {this.renderIgnoreSilentSwitchControl('obey')}
-                </View> : null
-            }
-          </View>
-
+        <Controls>
           <View style={styles.trackingControls}>
             <View style={styles.progress}>
               <View style={[styles.innerProgressCompleted, {flex: flexCompleted}]} />
               <View style={[styles.innerProgressRemaining, {flex: flexRemaining}]} />
             </View>
           </View>
-        </View>
+        </Controls>
       </View>
     );
   }
@@ -197,61 +186,12 @@ class VideoPlayer extends Component {
     return (
       <View style={styles.container}>
         <View style={styles.fullScreen}>
-          <Video
-            source={require('./broadchurch.mp4')}
-            style={videoStyle}
-            rate={this.state.rate}
-            paused={this.state.paused}
-            volume={this.state.volume}
-            muted={this.state.muted}
-            ignoreSilentSwitch={this.state.ignoreSilentSwitch}
-            resizeMode={this.state.resizeMode}
-            onLoad={this.onLoad}
-            onBuffer={this.onBuffer}
-            onProgress={this.onProgress}
-            onEnd={() => { AlertIOS.alert('Done!') }}
-            repeat={true}
-            controls={this.state.controls}
-          />
+          {this.renderVideo({
+            style: videoStyle,
+            controls: this.state.controls,
+          })}
         </View>
-        <View style={styles.controls}>
-          <View style={styles.generalControls}>
-            <View style={styles.skinControl}>
-              {this.renderSkinControl('custom')}
-              {this.renderSkinControl('native')}
-              {this.renderSkinControl('embed')}
-            </View>
-          </View>
-          <View style={styles.generalControls}>
-            <View style={styles.rateControl}>
-              {this.renderRateControl(0.5)}
-              {this.renderRateControl(1.0)}
-              {this.renderRateControl(2.0)}
-            </View>
-
-            <View style={styles.volumeControl}>
-              {this.renderVolumeControl(0.5)}
-              {this.renderVolumeControl(1)}
-              {this.renderVolumeControl(1.5)}
-            </View>
-
-            <View style={styles.resizeModeControl}>
-              {this.renderResizeModeControl('cover')}
-              {this.renderResizeModeControl('contain')}
-              {this.renderResizeModeControl('stretch')}
-            </View>
-          </View>
-          <View style={styles.generalControls}>
-            {
-              (Platform.OS === 'ios') ?
-                <View style={styles.ignoreSilentSwitchControl}>
-                  {this.renderIgnoreSilentSwitchControl('ignore')}
-                  {this.renderIgnoreSilentSwitchControl('obey')}
-                </View> : null
-            }
-          </View>
-        </View>
-
+        <Controls/>
       </View>
     );
   }
@@ -260,6 +200,20 @@ class VideoPlayer extends Component {
     return this.state.controls ? this.renderNativeSkin() : this.renderCustomSkin();
   }
 }
+
+
+const Toggle = ({isSelected, onPress, title})=> <TouchableOpacity onPress={onPress}>
+  <Text style={[styles.controlOption, {fontWeight: isSelected? "bold" : "normal"}]}>
+    {title}
+  </Text>
+</TouchableOpacity>
+
+const getToggle = ({field, stringifyTitle = t=> t, self})=> value=> <Toggle
+  title={stringifyTitle(value)}
+  isSelected={self.state[field] == value}
+  onPress={()=> self.setState({[field]: value})}
+/>
+
 
 const styles = StyleSheet.create({
   container: {
